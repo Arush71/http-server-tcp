@@ -31,15 +31,17 @@ The main goal of this project is to deeply understand how the HTTP/1.1 protocol 
 
 ## Project Structure
 
-internal/
-├── request/    // incremental HTTP request parser & state machine
-├── headers/    // header parsing, storage, case-insensitive map
-├── response/   // custom ResponseWriter, chunked encoding, trailers
-└── server/     // TCP listener loop, connection handling, handler abstraction
-
-main.go         // routing table + example handlers
-go.mod
-README.md
+```text
+.
+├── internal/
+│   ├── request/    # incremental HTTP request parser & state machine
+│   ├── headers/    # header parsing, storage, case-insensitive map
+│   ├── response/   # custom ResponseWriter, chunked encoding, trailers
+│   └── server/     # TCP listener loop, connection handling, handler abstraction
+├── main.go         # routing table + example handlers
+├── go.mod
+└── README.md
+```
 
 ## Current Limitations / Not Implemented
 
