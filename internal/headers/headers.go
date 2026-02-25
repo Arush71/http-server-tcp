@@ -67,3 +67,7 @@ func (h Headers) Set(name, value string) {
 	}
 	h[lowerKey] = value
 }
+
+func (h Headers) Delete(name string) {
+	delete(h, name)
+}

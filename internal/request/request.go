@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"httpProtocols/internal/headers"
 	"io"
+	"strconv"
 	"strings"
 )
 
@@ -14,6 +15,7 @@ type ParserStateType int
 const (
 	Initialized ParserStateType = iota
 	RequestStateParsingHeaders
+	ParsingBody
 	Done
 )
 
@@ -21,6 +23,7 @@ type Request struct {
 	RequestLine RequestLine
 	ParserState ParserStateType
 	Headers     headers.Headers
+	Body        []byte
 }
 
 type RequestLine struct {
@@ -50,8 +53,28 @@ func (r *Request) parseSingle(data []byte) (int, error) {
 		if !isDone {
 			return n, nil
 		}
-		r.ParserState = Done
+		r.ParserState = ParsingBody
 		return n, nil
+	case ParsingBody:
+		contentLength := r.Headers.Get("Content-Length")
+		if contentLength == "" {
+			r.ParserState = Done
+			return 0, nil
+		}
+		n, err := strconv.Atoi(contentLength)
+		if err != nil || n < 0 {
+			return 0, errors.New("Invalid Content-Length.")
+		}
+		r.Body = append(r.Body, data...)
+
+		if len(r.Body) > n {
+			return len(data), errors.New("Body length is greater then specified in content-length.")
+		}
+		if len(r.Body) == n {
+			r.ParserState = Done
+			return len(data), nil
+		}
+		return len(data), nil
 	case Done:
 		return 0, nil
 	default:
@@ -74,7 +97,7 @@ func (r *Request) parse(data []byte) (int, error) {
 	return totalBytesParsed, nil
 }
 
-const bufferSize = 8
+const bufferSize = 1024
 
 func RequestFromReader(reader io.Reader) (*Request, error) {
 	buf := make([]byte, bufferSize)
