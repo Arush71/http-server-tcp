@@ -1,4 +1,211 @@
-# HTTP/1.1 Server from Scratch in Go
+# 🌐 HTTP/1.1 Server from Scratch in Go
+
+An HTTP/1.1 server implemented directly over raw TCP sockets in Go — **no `net/http`, no frameworks, no abstractions**.
+
+This project focuses on understanding HTTP at the protocol level by manually implementing request parsing, response formatting, and streaming behavior according to RFC 7230.
+
+---
+
+## 🚀 What This Project Demonstrates
+
+* Protocol-level understanding of HTTP/1.1
+* Streaming parser design with partial-read handling
+* RFC-compliant header parsing and validation
+* Chunked transfer encoding and HTTP trailers
+* Low-level networking with TCP sockets
+
+---
+
+## ✨ Features
+
+### Request Parsing
+
+* HTTP/1.1 request line parsing (method, target, version)
+* Streaming **state-machine parser** handling partial TCP reads
+* RFC-compliant header parsing with token validation (`isToken`)
+* Case-insensitive headers with duplicate merging
+* `Content-Length` body parsing with strict enforcement
+
+---
+
+### Response Handling
+
+* Structured response writer enforcing correct order:
+
+  * status line → headers → body
+* Supported status codes: 200, 400, 500
+* Chunked transfer encoding (write path)
+* HTTP trailers support
+* Default headers: `Content-Length`, `Content-Type`, `Connection: close`
+
+---
+
+### Server & Concurrency
+
+* TCP accept loop using `net.Listener`
+* One goroutine per connection
+* Graceful listener shutdown via signals
+* Atomic state handling for shutdown safety
+
+---
+
+### Application Layer
+
+* Reverse proxy: `/httpbin/*` → `https://httpbin.org/*`
+* Streaming proxy responses using chunked encoding
+* SHA-256 response hash returned as HTTP trailer
+* Binary file serving (`/video`)
+* Basic route handling via switch-based dispatch
+
+---
+
+## 🏗️ Architecture
+
+### Connection Flow
+
+```
+conn.Read() → state-machine parser → request object → handler → response writer → conn.Close()
+```
+
+### TCP Handling
+
+* Accept loop runs continuously in a goroutine
+* Each connection is handled independently (`go s.handle(conn)`)
+* Connections are one-shot (`Connection: close`)
+
+---
+
+### State Machine Parser
+
+```
+Initialized → ParsingHeaders → ParsingBody → Done
+```
+
+* Incremental parsing based on available bytes
+* Handles arbitrary TCP fragmentation correctly
+* Consumes and shifts buffer as parsing progresses
+
+---
+
+### Buffer Strategy
+
+* Initial buffer: 1024 bytes
+* Automatically doubles when full
+* Ensures efficient handling of large or fragmented requests
+
+---
+
+## 🧠 Technical Highlights
+
+### Partial Read Handling
+
+The parser is designed around real TCP behavior — data may arrive in arbitrary chunk sizes.
+A cursor-based buffer system ensures correctness across fragmented reads.
+
+---
+
+### RFC-Compliant Header Validation
+
+Header field names are validated against RFC 7230 token rules.
+Invalid inputs are rejected instead of silently accepted.
+
+---
+
+### Chunked Encoding + Trailers
+
+Implements HTTP/1.1 chunked transfer encoding, including trailer support for metadata like SHA-256 hashes of streamed responses.
+
+---
+
+### Thoughtful Testing
+
+Uses a custom `chunkReader` to simulate real-world network conditions by limiting read sizes, ensuring the parser behaves correctly under partial reads.
+
+---
+
+## ⚠️ Limitations
+
+This is a **learning-focused implementation**, not a production server.
+
+* No keep-alive (always `Connection: close`)
+* No request-side chunked decoding
+* Limited status code support
+* No TLS / HTTPS
+* No connection timeouts
+* Basic routing only
+* No HTTP/2 or HTTP/3
+* No production hardening (rate limiting, pooling, etc.)
+
+---
+
+## 🎯 Why This Project Exists
+
+Most applications rely on high-level abstractions like `net/http`, which hide how HTTP actually works.
+
+This project removes those abstractions to explore:
+
+* how requests are framed over TCP
+* how headers and bodies are parsed
+* how responses are constructed at the byte level
+
+---
+
+## 🛠️ Getting Started
+
+**Run the server:**
+
+```bash
+go run ./cmd/httpserver/main.go
+```
+
+Server runs on:
+
+```text
+http://localhost:42069
+```
+
+---
+
+### Example Requests
+
+```bash
+# Default route
+curl -v http://localhost:42069/
+
+# Reverse proxy
+curl -v --raw http://localhost:42069/httpbin/get
+
+# Video file
+curl -v http://localhost:42069/video --output out.mp4
+```
+
+---
+
+## 📂 Project Structure
+
+```
+cmd/        # entry points and handlers
+internal/
+  ├── request/   # state machine parser
+  ├── headers/   # header parsing + validation
+  ├── response/  # response writer + chunked encoding
+  └── server/    # TCP loop + connection handling
+```
+
+---
+
+## 🧩 What This Shows
+
+* Ability to work below frameworks and abstractions
+* Understanding of real-world networking behavior
+* Implementation of protocol-level logic from specification
+* Careful handling of edge cases and streaming data
+
+---
+
+## 🏁 Final Note
+
+This project prioritizes **depth over completeness** — focusing on how HTTP works internally rather than building a production-ready server.
 
 An HTTP/1.1 server built directly over raw TCP sockets in Go — no `net/http`, no framework, no shortcuts. Every byte of the request is parsed manually according to the HTTP/1.1 specification (RFC 7230).
 
